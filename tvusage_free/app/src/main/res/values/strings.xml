@@ -1,0 +1,9 @@
+<resources>
+    <string name="app_name">TVUsage Free</string>
+    <string name="title_qr_setup">Настройка со смартфона</string>
+    <string name="desc_qr_setup">Отсканируйте QR-код камерой телефона (в одной сети Wi-Fi) для управления лимитами и паролем</string>
+    <string name="enter_dpad_pin">Введите пароль стрелками</string>
+    <string name="dpad_help">Используйте ↑ ↓ ← → на пульте</string>
+    <string name="ask_more_time">Попросить время</string>
+    <string name="time_expired">Время просмотра на сегодня закончилось</string>
+</resources>

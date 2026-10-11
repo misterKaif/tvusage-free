@@ -1,0 +1,6 @@
+package:com.sony.dtv.promos
+package:com.amazon.amazonvideo.livingroom
+package:com.google.android.youtube.tvmusic
+package:com.google.android.videos
+package:com.sony.dtv.smarthomesettings
+package:com.google.android.play.games

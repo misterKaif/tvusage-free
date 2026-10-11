@@ -1,0 +1,171 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#12151B"
+    android:gravity="center"
+    android:orientation="vertical"
+    android:padding="32dp">
+
+    <!-- Title matching kidtvlock.png -->
+    <TextView
+        android:id="@+id/tvTitle"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Enter current password"
+        android:textColor="#FFFFFF"
+        android:textSize="44sp"
+        android:textStyle="bold" />
+
+    <!-- 6 large circular dots indicators -->
+    <LinearLayout
+        android:id="@+id/dotsContainer"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="56dp"
+        android:gravity="center"
+        android:orientation="horizontal">
+
+        <View
+            android:id="@+id/dot1"
+            android:layout_width="54dp"
+            android:layout_height="54dp"
+            android:layout_margin="14dp"
+            android:background="@drawable/pin_dot_empty" />
+
+        <View
+            android:id="@+id/dot2"
+            android:layout_width="54dp"
+            android:layout_height="54dp"
+            android:layout_margin="14dp"
+            android:background="@drawable/pin_dot_empty" />
+
+        <View
+            android:id="@+id/dot3"
+            android:layout_width="54dp"
+            android:layout_height="54dp"
+            android:layout_margin="14dp"
+            android:background="@drawable/pin_dot_empty" />
+
+        <View
+            android:id="@+id/dot4"
+            android:layout_width="54dp"
+            android:layout_height="54dp"
+            android:layout_margin="14dp"
+            android:background="@drawable/pin_dot_empty" />
+
+        <View
+            android:id="@+id/dot5"
+            android:layout_width="54dp"
+            android:layout_height="54dp"
+            android:layout_margin="14dp"
+            android:background="@drawable/pin_dot_empty" />
+
+        <View
+            android:id="@+id/dot6"
+            android:layout_width="54dp"
+            android:layout_height="54dp"
+            android:layout_margin="14dp"
+            android:background="@drawable/pin_dot_empty" />
+    </LinearLayout>
+
+    <!-- Up / Down / Left / Right pill button indicators matching kidtvlock.png -->
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="48dp"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:background="@drawable/bg_pill_button"
+            android:text="Up"
+            android:textColor="#FFFFFF"
+            android:textSize="18sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="14dp"
+            android:layout_marginEnd="14dp"
+            android:text="/"
+            android:textColor="#525866"
+            android:textSize="20sp" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:background="@drawable/bg_pill_button"
+            android:text="Down"
+            android:textColor="#FFFFFF"
+            android:textSize="18sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="14dp"
+            android:layout_marginEnd="14dp"
+            android:text="/"
+            android:textColor="#525866"
+            android:textSize="20sp" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:background="@drawable/bg_pill_button"
+            android:text="Left"
+            android:textColor="#FFFFFF"
+            android:textSize="18sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="14dp"
+            android:layout_marginEnd="14dp"
+            android:text="/"
+            android:textColor="#525866"
+            android:textSize="20sp" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:background="@drawable/bg_pill_button"
+            android:text="Right"
+            android:textColor="#FFFFFF"
+            android:textSize="18sp"
+            android:textStyle="bold" />
+    </LinearLayout>
+
+    <!-- Subtitle matching kidtvlock.png -->
+    <TextView
+        android:id="@+id/tvSubtitle"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="36dp"
+        android:text="Press Back to cancel"
+        android:textColor="#8C93A4"
+        android:textSize="20sp" />
+
+    <!-- Telegram request button (styled quietly below) -->
+    <Button
+        android:id="@+id/btnAskTime"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="36dp"
+        android:background="@drawable/bg_pill_button"
+        android:focusable="true"
+        android:paddingStart="24dp"
+        android:paddingTop="10dp"
+        android:paddingEnd="24dp"
+        android:paddingBottom="10dp"
+        android:text="Ask parents via Telegram"
+        android:textColor="#00E676"
+        android:textSize="16sp"
+        android:visibility="gone" />
+
+</LinearLayout>

@@ -1,0 +1,27 @@
+# Built files and Gradle caches
+.gradle/
+build/
+*/build/
+*.apk
+*.aab
+*.idsig
+local.properties
+
+# Android Studio & IDEs
+.idea/
+*.iml
+.navigation/
+captures/
+.externalNativeBuild/
+.cxx/
+
+# Operating System files
+.DS_Store
+._*
+Thumbs.db
+
+# Logs & temporary files
+*.log
+/tmp/
+*.tmp
+screen_*.png
