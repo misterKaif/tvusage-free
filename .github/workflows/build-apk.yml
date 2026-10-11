@@ -3,9 +3,12 @@ name: Build TVUsage Free APK
 on:
   push:
     branches: [ main, master ]
-  pull_request:
-    branches: [ main, master ]
+    tags:
+      - 'v*'
   workflow_dispatch:
+
+permissions:
+  contents: write
 
 jobs:
   build:
@@ -30,9 +33,38 @@ jobs:
         working-directory: tvusage_free
         run: ./gradlew assembleDebug --stacktrace
 
+      - name: Prepare Release APK Asset
+        run: |
+          mkdir -p release-assets
+          cp tvusage_free/app/build/outputs/apk/debug/app-debug.apk release-assets/tvusage-free-v1.1.0.apk
+
       - name: Upload Debug APK Artifact
         uses: actions/upload-artifact@v4
         with:
           name: tvusage-free-debug
-          path: tvusage_free/app/build/outputs/apk/debug/*.apk
+          path: release-assets/*.apk
           retention-days: 14
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/') || github.ref == 'refs/heads/main'
+        with:
+          tag_name: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || 'v1.1.0' }}
+          name: ${{ startsWith(github.ref, 'refs/tags/') && format('Release {0}', github.ref_name) || 'Release v1.1.0' }}
+          draft: false
+          prerelease: false
+          files: |
+            release-assets/tvusage-free-v1.1.0.apk
+          body: |
+            ### 🚀 TVUsage Free v1.1.0
+
+            #### Новые возможности и улучшения:
+            - **Постоянная подпись (debug.keystore)**: настройки и разрешения больше не сбрасываются при обновлениях (`install -r`).
+            - **Сворачиваемые секции по умолчанию**: хронология активности и выбор программ теперь компактно свернуты в админ-панели.
+            - **Точный хронологический учет времени**: экранное время (например, HDrezka TV) рассчитывается строго по интервалам фактического просмотра, исключая фоновые фантомные часы Android.
+            - **Редактирование остатка времени**: возможность изменить оставшиеся минуты на сегодня через веб-админку или Telegram-командой `/set <минуты>`.
+            - **Мульти-администраторы Telegram**: поддержка списка ID через запятую и кнопка быстрого добавления написавших боту пользователей.
+            - **Управление питанием**: кнопка перевода ТВ в спящий режим (`/off` в Telegram и в веб-интерфейсе).
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
