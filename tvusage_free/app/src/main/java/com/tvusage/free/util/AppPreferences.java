@@ -175,6 +175,24 @@ public class AppPreferences {
     }
 
     /**
+     * Explicitly sets how many minutes remain today.
+     * Adjusts bonus minutes so that totalLimit - usedMin == targetRemainingMinutes.
+     */
+    public synchronized void setRemainingMinutesToday(int targetRemainingMinutes) {
+        checkAndResetDailyUsage();
+        setForceLocked(false);
+        int usedMin = getTodayUsageSeconds() / 60;
+        int base = getDailyLimitMinutes();
+        if (base <= 0) {
+            base = targetRemainingMinutes;
+            setDailyLimitMinutes(base);
+        }
+        int neededTotal = usedMin + Math.max(0, targetRemainingMinutes);
+        int neededBonus = Math.max(0, neededTotal - base);
+        prefs.edit().putInt(KEY_BONUS_MINUTES, neededBonus).apply();
+    }
+
+    /**
      * Checks if TV is currently in Adult Parent Mode (unlimited until screen off).
      */
     public boolean isUnlockedUntilSleep() {

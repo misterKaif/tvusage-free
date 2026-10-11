@@ -112,6 +112,7 @@ public class TelegramWorker {
                     if (data.startsWith("grant_")) {
                         int minutes = Integer.parseInt(data.replace("grant_", ""));
                         prefs.addGrantMinutes(minutes);
+                        broadcastTimeChanged("Родители добавили +" + minutes + " мин!");
                         sendMessageWithMenu(senderId, "✅ Выдано +" + minutes + " мин просмотра!\nОсталось: " + prefs.getRemainingMinutes() + " мин.");
                     } else if ("reject".equals(data)) {
                         sendMessageWithMenu(senderId, "❌ Запрос на добавление времени отклонен.");
@@ -141,19 +142,41 @@ public class TelegramWorker {
             }
 
             if (text.startsWith("/start") || text.startsWith("/help") || text.equalsIgnoreCase("меню") || text.equals("/menu")) {
-                sendMessageWithMenu(chatId, "📺 *TVUsage Free Bot*\nУправление родительским контролем на телевизоре.\n\nИспользуйте кнопки меню ниже для управления:");
+                sendMessageWithMenu(chatId, "📺 *TVUsage Free Bot*\nУправление родительским контролем на телевизоре.\n\n" +
+                        "• `/set <мин>` — установить точный остаток времени на сегодня\n" +
+                        "• `/grant <мин>` — добавить минуты\n" +
+                        "• `/unlock` — режим родителя до сна ТВ\n" +
+                        "• `/lock` — заблокировать сейчас\n" +
+                        "• `/off` — выключить ТВ (в сон)\n\n" +
+                        "Либо используйте кнопки меню ниже:");
             } else if (text.startsWith("/status") || text.contains("Статус") || text.contains("статистика")) {
                 sendDetailedStatus(chatId);
             } else if (text.startsWith("/history") || text.contains("История") || text.contains("Хронология")) {
                 sendTimelineHistory(chatId);
+            } else if (text.startsWith("/set")) {
+                String[] parts = text.split(" ");
+                if (parts.length > 1) {
+                    try {
+                        int targetMins = Integer.parseInt(parts[1]);
+                        prefs.setRemainingMinutesToday(targetMins);
+                        broadcastTimeChanged("Остаток времени обновлен: " + targetMins + " мин.");
+                        sendMessageWithMenu(chatId, "⏱️ Остаток времени на сегодня установлен: *" + targetMins + " мин* (из " + prefs.getTotalEffectiveLimitMinutes() + " мин).");
+                    } catch (NumberFormatException e) {
+                        sendMessageWithMenu(chatId, "⚠️ Укажите число минут, например: `/set 25`");
+                    }
+                } else {
+                    sendMessageWithMenu(chatId, "⚠️ Укажите число минут, например: `/set 25`");
+                }
             } else if (text.startsWith("/grant")) {
                 String[] parts = text.split(" ");
                 int mins = parts.length > 1 ? Integer.parseInt(parts[1]) : 30;
                 prefs.addGrantMinutes(mins);
+                broadcastTimeChanged("Родители добавили +" + mins + " мин!");
                 sendMessageWithMenu(chatId, "✅ Добавлено +" + mins + " мин просмотра!\nОсталось: " + prefs.getRemainingMinutes() + " мин.");
             } else if (text.equals("👑 Взрослый режим") || text.startsWith("/unlock")) {
                 prefs.setUnlockedUntilSleep(true);
                 prefs.setForceLocked(false);
+                broadcastTimeChanged("Режим родителя включен: без ограничений");
                 sendMessageWithMenu(chatId, "👑 *Режим родителя включен!*\nОграничения сняты до выключения/сна телевизора.");
             } else if (text.equals("🛡️ Детский режим")) {
                 prefs.setUnlockedUntilSleep(false);
@@ -168,12 +191,23 @@ public class TelegramWorker {
                 sendMessageWithMenu(chatId, "🌙 *Телевизор переведен в спящий режим (Standby).*");
             } else if (text.equals("🔄 Сбросить счетчик сегодня") || text.startsWith("/reset")) {
                 prefs.resetTodayUsage();
+                broadcastTimeChanged("Счетчик за сегодня сброшен на 0");
                 sendMessageWithMenu(chatId, "🔄 *Счетчик за сегодня успешно сброшен на 0!*\nОсталось времени: " + prefs.getRemainingMinutes() + " мин.");
             } else if (text.equals("➕ Добавить время") || text.contains("Добавить время")) {
                 sendAddTimeInlineButtons(chatId);
             } else {
                 sendMessageWithMenu(chatId, "Неизвестная команда. Выберите действие из меню ниже:");
             }
+        }
+    }
+
+    private void broadcastTimeChanged(String message) {
+        try {
+            android.content.Intent intent = new android.content.Intent(com.tvusage.free.ui.LockActivity.ACTION_TIME_CHANGED);
+            intent.putExtra(com.tvusage.free.ui.LockActivity.EXTRA_GRANTED_MESSAGE, message);
+            context.sendBroadcast(intent);
+        } catch (Exception e) {
+            e.printStackTrace();
         }
     }
 

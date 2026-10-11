@@ -107,12 +107,30 @@ public class UsageStatsHelper {
         }
 
         List<AppStatItem> result = new ArrayList<>();
+
+        // If calculating for TODAY, derive usage directly from today's timeline sessions
+        // to avoid OS UsageStatsManager including background / phantom foreground time.
+        Map<String, Long> timelineDurations = null;
+        if (period == Period.DAY) {
+            timelineDurations = new HashMap<>();
+            List<ActivityInterval> intervals = getTodayTimeline(context);
+            for (ActivityInterval intervalItem : intervals) {
+                long durationMs = intervalItem.endTime - intervalItem.startTime;
+                long cur = timelineDurations.containsKey(intervalItem.packageName) ? timelineDurations.get(intervalItem.packageName) : 0L;
+                timelineDurations.put(intervalItem.packageName, cur + durationMs);
+            }
+        }
+
         for (Map.Entry<String, String> entry : appLabels.entrySet()) {
             String pkg = entry.getKey();
             if (pkg.equals(context.getPackageName())) continue; // Skip self
 
             long timeMs = 0;
-            if (statsMap.containsKey(pkg)) {
+            if (period == Period.DAY && timelineDurations != null) {
+                if (timelineDurations.containsKey(pkg)) {
+                    timeMs = timelineDurations.get(pkg);
+                }
+            } else if (statsMap.containsKey(pkg)) {
                 UsageStats us = statsMap.get(pkg);
                 if (us != null) {
                     timeMs = us.getTotalTimeInForeground();

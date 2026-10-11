@@ -40,6 +40,22 @@ public class LockActivity extends AppCompatActivity {
     private View[] dots;
     private Button btnAskTime;
     private boolean isUnlockForSettings = false;
+    public static final String ACTION_TIME_CHANGED = "com.tvusage.free.ACTION_TIME_CHANGED";
+    public static final String EXTRA_GRANTED_MESSAGE = "extra_granted_message";
+
+    private final android.content.BroadcastReceiver unlockReceiver = new android.content.BroadcastReceiver() {
+        @Override
+        public void onReceive(android.content.Context context, Intent intent) {
+            if (ACTION_TIME_CHANGED.equals(intent.getAction())) {
+                String msg = intent.getStringExtra(EXTRA_GRANTED_MESSAGE);
+                if (msg == null || msg.isEmpty()) {
+                    msg = "Время добавлено родителями! Приятного просмотра!";
+                }
+                Toast.makeText(LockActivity.this, msg, Toast.LENGTH_LONG).show();
+                finish();
+            }
+        }
+    };
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -48,6 +64,9 @@ public class LockActivity extends AppCompatActivity {
 
         prefs = new AppPreferences(this);
         isUnlockForSettings = getIntent().getBooleanExtra(EXTRA_UNLOCK_FOR_SETTINGS, false);
+
+        android.content.IntentFilter filter = new android.content.IntentFilter(ACTION_TIME_CHANGED);
+        registerReceiver(unlockReceiver, filter);
 
         dots = new View[]{
                 findViewById(R.id.dot1),
@@ -77,29 +96,37 @@ public class LockActivity extends AppCompatActivity {
         }
     }
 
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        try {
+            unregisterReceiver(unlockReceiver);
+        } catch (Exception ignored) {}
+    }
+
     /**
      * Pauses media playback (video/audio players like YouTube/SmartTube)
      * and kills background processes of the restricted app.
      */
     private void stopPlayingMediaAndKillApp(String blockedPackage) {
         try {
-            // 1. Request transient audio focus to force active video/music players to pause playback
+            // 1. Request permanent audio focus to force active video/music players to release audio hardware
             android.media.AudioManager audioManager = (android.media.AudioManager) getSystemService(AUDIO_SERVICE);
             if (audioManager != null) {
                 audioManager.requestAudioFocus(
                         null,
                         android.media.AudioManager.STREAM_MUSIC,
-                        android.media.AudioManager.AUDIOFOCUS_GAIN_TRANSIENT
+                        android.media.AudioManager.AUDIOFOCUS_GAIN
                 );
             }
 
-            // 2. Dispatch a global pause media key event to halt background media playback
+            // 2. Dispatch global pause and stop media key events to halt background players
             long eventTime = android.os.SystemClock.uptimeMillis();
-            KeyEvent pauseDown = new KeyEvent(eventTime, eventTime, KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_MEDIA_PAUSE, 0);
-            KeyEvent pauseUp = new KeyEvent(eventTime, eventTime, KeyEvent.ACTION_UP, KeyEvent.KEYCODE_MEDIA_PAUSE, 0);
             if (audioManager != null) {
-                audioManager.dispatchMediaKeyEvent(pauseDown);
-                audioManager.dispatchMediaKeyEvent(pauseUp);
+                audioManager.dispatchMediaKeyEvent(new KeyEvent(eventTime, eventTime, KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_MEDIA_PAUSE, 0));
+                audioManager.dispatchMediaKeyEvent(new KeyEvent(eventTime, eventTime, KeyEvent.ACTION_UP, KeyEvent.KEYCODE_MEDIA_PAUSE, 0));
+                audioManager.dispatchMediaKeyEvent(new KeyEvent(eventTime, eventTime, KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_MEDIA_STOP, 0));
+                audioManager.dispatchMediaKeyEvent(new KeyEvent(eventTime, eventTime, KeyEvent.ACTION_UP, KeyEvent.KEYCODE_MEDIA_STOP, 0));
             }
 
             // 3. Terminate background processes for the target blocked package

@@ -139,6 +139,20 @@ public class LocalWebServer extends NanoHTTPD {
                     "<html><head><meta http-equiv='refresh' content='0;url=/'></head><body>Redirecting...</body></html>");
         }
 
+        // Handle Set Remaining Minutes (/set_remaining?minutes=25)
+        if (uri.startsWith("/set_remaining")) {
+            String mStr = session.getParms().get("minutes");
+            if (mStr != null) {
+                try {
+                    int remM = Integer.parseInt(mStr);
+                    prefs.setRemainingMinutesToday(remM);
+                    notifyTimeChanged("Остаток времени обновлен: " + remM + " мин.");
+                } catch (NumberFormatException ignored) {}
+            }
+            return newFixedLengthResponse(Response.Status.REDIRECT, MIME_HTML,
+                    "<html><head><meta http-equiv='refresh' content='0;url=/'></head><body>Redirecting...</body></html>");
+        }
+
         // Handle Put TV to Sleep (/turn_off_tv)
         if (uri.startsWith("/turn_off_tv")) {
             com.tvusage.free.util.TvControlHelper.sleepTv(context);
@@ -288,6 +302,13 @@ public class LocalWebServer extends NanoHTTPD {
                 ".top-bar{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}" +
                 ".tg-user{background:#202530;padding:8px 12px;border-radius:8px;margin-top:6px;display:flex;justify-content:space-between;align-items:center;font-size:13px}" +
                 ".tg-user-btn{background:#00e676;color:#000;border:none;padding:4px 8px;border-radius:4px;cursor:pointer;font-weight:bold;font-size:11px}" +
+                "details.card{cursor:pointer;user-select:none}" +
+                "details summary{outline:none;list-style:none;display:flex;justify-content:space-between;align-items:center}" +
+                "details summary::-webkit-details-marker{display:none}" +
+                "details summary::after{content:'▶';font-size:13px;color:#00e676;transition:transform .2s}" +
+                "details[open] summary::after{content:'▼'}" +
+                "details summary h2{margin:0;display:inline-block}" +
+                "details .card-content{margin-top:14px;cursor:default}" +
                 "</style></head><body>" +
                 "<div class='top-bar'>" +
                 "<div><span style='color:#8c93a4;font-size:13px'>🔒 Авторизовано</span> <span style='background:#222733;color:#00e676;font-size:11px;padding:2px 6px;border-radius:4px;font-weight:bold;margin-left:6px'>v1.1.0</span></div>" +
@@ -298,8 +319,12 @@ public class LocalWebServer extends NanoHTTPD {
                 "<h2>⏱️ Общий таймер контролируемых программ</h2>" +
                 "<div style='font-size:15px;color:#e0e0e0;margin-bottom:6px'>Использовано сегодня: <b>" + usedMin + " мин (" + usedSec + " сек)</b></div>" +
                 "<div style='font-size:16px;color:#ffd54f;margin-bottom:6px'>Осталось времени: <b>" + remMin + " мин</b> (из " + totalLimit + " мин)</div>" +
+                "<form method='GET' action='/set_remaining' style='display:flex;gap:8px;align-items:center;margin-top:10px;margin-bottom:12px'>" +
+                "<input type='number' name='minutes' value='" + remMin + "' min='0' max='1440' style='width:90px;padding:8px 10px;margin:0;font-size:14px;border-radius:6px'>" +
+                "<button type='submit' class='quick-btn' style='padding:8px 14px;margin:0;cursor:pointer;border:none;background:#00e676;color:#000;font-weight:bold'>Изменить остаток</button>" +
+                "</form>" +
                 (bonusMin > 0 ? "<div style='font-size:13px;color:#00e676;margin-bottom:12px'>🎁 Бонусное время сегодня: +" + bonusMin + " мин</div>" : "") +
-                "<div style='font-size:13px;color:#a0a5b1;margin-top:14px;margin-bottom:8px'>Быстро добавить время на сегодня:</div>" +
+                "<div style='font-size:13px;color:#a0a5b1;margin-top:8px;margin-bottom:8px'>Быстро добавить время на сегодня:</div>" +
                 "<div style='display:flex;gap:8px'>" +
                 "<a href='/add_time?minutes=10' class='quick-btn'>+10 мин</a>" +
                 "<a href='/add_time?minutes=20' class='quick-btn'>+20 мин</a>" +
@@ -318,17 +343,21 @@ public class LocalWebServer extends NanoHTTPD {
                 "<a href='/?period=month' class='" + tabMonthClass + "'>Месяц</a>" +
                 "</div>" +
                 "</div>" +
-                "<div class='card'>" +
-                "<h2>🕒 Хронология активности сегодня</h2>" +
+                "<details class='card'>" +
+                "<summary><h2>🕒 Хронология активности сегодня</h2></summary>" +
+                "<div class='card-content'>" +
                 "<div style='font-size:13px;color:#a0a5b1;margin-bottom:10px'>Периоды включения ТВ и запущенные программы:</div>" +
                 timelineHtml +
                 "</div>" +
+                "</details>" +
                 "<form method='POST' action='/save'>" +
-                "<div class='card'>" +
-                "<h2>🎯 Выбор программ под ограничение</h2>" +
+                "<details class='card'>" +
+                "<summary><h2>🎯 Выбор программ под ограничение</h2></summary>" +
+                "<div class='card-content'>" +
                 "<div style='font-size:13px;color:#a0a5b1;margin-bottom:12px'>Приложения, на которые распространяется общий таймер:</div>" +
                 appsHtml +
                 "</div>" +
+                "</details>" +
                 "<div class='card'>" +
                 "<h2>⚙️ Настройки и пароль</h2>" +
                 "<label>Базовый ежедневный лимит (минут):</label>" +
@@ -435,5 +464,15 @@ public class LocalWebServer extends NanoHTTPD {
             e.printStackTrace();
         }
         return sb.toString();
+    }
+
+    private void notifyTimeChanged(String message) {
+        try {
+            android.content.Intent intent = new android.content.Intent(com.tvusage.free.ui.LockActivity.ACTION_TIME_CHANGED);
+            intent.putExtra(com.tvusage.free.ui.LockActivity.EXTRA_GRANTED_MESSAGE, message);
+            context.sendBroadcast(intent);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 }
