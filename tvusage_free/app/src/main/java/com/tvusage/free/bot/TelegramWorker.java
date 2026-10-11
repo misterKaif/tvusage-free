@@ -127,10 +127,17 @@ public class TelegramWorker {
             if (msg == null) return;
             JSONObject chat = msg.optJSONObject("chat");
             String chatId = chat != null ? String.valueOf(chat.optLong("id")) : "";
+            JSONObject from = msg.optJSONObject("from");
+            String fromName = from != null ? (from.optString("first_name") + " " + from.optString("last_name")).trim() : "";
+            String username = from != null ? from.optString("username") : "";
             String text = msg.optString("text").trim();
 
+            // Record this Telegram user so admin web UI can show them
+            prefs.recordTgUser(chatId, fromName, username);
+
             if (!isAdmin(chatId)) {
-                return; // Unauthorized user
+                sendMessageWithMenu(chatId, "⚠️ Ваш Telegram Chat ID: `" + chatId + "`\nДля доступа добавьте этот ID в настройки веб-админки на телевизоре.");
+                return;
             }
 
             if (text.startsWith("/start") || text.startsWith("/help") || text.equalsIgnoreCase("меню") || text.equals("/menu")) {

@@ -204,8 +204,39 @@ public class AppPreferences {
         prefs.edit().putString(KEY_TG_CHAT_ID, chatId).apply();
     }
 
+    // JSON array of known connected Telegram users: [{"id":"123","name":"John","username":"john_doe","time":123456789}]
+    private static final String KEY_TG_CONNECTED_USERS = "tg_connected_users";
+
+    public String getTgConnectedUsersJson() {
+        return prefs.getString(KEY_TG_CONNECTED_USERS, "[]");
+    }
+
+    public synchronized void recordTgUser(String id, String name, String username) {
+        try {
+            org.json.JSONArray arr = new org.json.JSONArray(getTgConnectedUsersJson());
+            org.json.JSONArray newArr = new org.json.JSONArray();
+            org.json.JSONObject current = new org.json.JSONObject();
+            current.put("id", id);
+            current.put("name", name != null && !name.isEmpty() ? name : "Пользователь");
+            current.put("username", username != null ? username : "");
+            current.put("time", System.currentTimeMillis());
+
+            newArr.put(current);
+            for (int i = 0; i < arr.length(); i++) {
+                org.json.JSONObject item = arr.getJSONObject(i);
+                if (!item.optString("id").equals(id)) {
+                    newArr.put(item);
+                }
+                if (newArr.length() >= 10) break; // Keep up to 10 latest
+            }
+            prefs.edit().putString(KEY_TG_CONNECTED_USERS, newArr.toString()).apply();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
     public boolean isTelegramConfigured() {
-        return !getTgBotToken().isEmpty() && !getTgChatId().isEmpty();
+        return !getTgBotToken().isEmpty();
     }
 
     private void checkAndResetDailyUsage() {

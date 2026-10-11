@@ -286,9 +286,11 @@ public class LocalWebServer extends NanoHTTPD {
                 "input:checked+.slider{background-color:#ff5252}" +
                 "input:checked+.slider:before{transform:translateX(20px)}" +
                 ".top-bar{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}" +
+                ".tg-user{background:#202530;padding:8px 12px;border-radius:8px;margin-top:6px;display:flex;justify-content:space-between;align-items:center;font-size:13px}" +
+                ".tg-user-btn{background:#00e676;color:#000;border:none;padding:4px 8px;border-radius:4px;cursor:pointer;font-weight:bold;font-size:11px}" +
                 "</style></head><body>" +
                 "<div class='top-bar'>" +
-                "<span style='color:#8c93a4;font-size:13px'>🔒 Авторизовано</span>" +
+                "<div><span style='color:#8c93a4;font-size:13px'>🔒 Авторизовано</span> <span style='background:#222733;color:#00e676;font-size:11px;padding:2px 6px;border-radius:4px;font-weight:bold;margin-left:6px'>v1.1.0</span></div>" +
                 "<a href='/logout' style='color:#ff5252;font-size:13px;text-decoration:none'>Выйти</a>" +
                 "</div>" +
                 parentModeBadge +
@@ -338,10 +340,18 @@ public class LocalWebServer extends NanoHTTPD {
                 "<label>Telegram Bot Token (необязательно):</label>" +
                 "<input type='text' name='tg_token' value='" + tgToken + "' placeholder='123456:ABC-DEF...'>" +
                 "<label>Telegram Admin Chat ID (необязательно):</label>" +
-                "<input type='text' name='tg_chat_id' value='" + tgChatId + "' placeholder='Например: 12345678, 87654321'>" +
+                "<input type='text' id='tgChatIdInput' name='tg_chat_id' value='" + tgChatId + "' placeholder='Например: 12345678, 87654321'>" +
                 "<small style='color:#7a808c'>Необязательно. Если пусто — бот ответит первому написавшему родителю. Можно указать несколько ID через запятую для обоих родителей.</small>" +
+                renderTgConnectedUsersHtml(prefs.getTgConnectedUsersJson()) +
                 "<button type='submit' class='btn'>Сохранить изменения</button>" +
-                "</div></form></body></html>";
+                "</div></form>" +
+                "<script>" +
+                "function appendChatId(id) {" +
+                "  var inp = document.getElementById('tgChatIdInput');" +
+                "  if (!inp.value.trim()) { inp.value = id; } else if (inp.value.indexOf(id) === -1) { inp.value = inp.value.trim() + ', ' + id; }" +
+                "}" +
+                "</script>" +
+                "</body></html>";
 
         return newFixedLengthResponse(Response.Status.OK, MIME_HTML, html);
     }
@@ -393,5 +403,37 @@ public class LocalWebServer extends NanoHTTPD {
                 "</div></body></html>";
 
         return newFixedLengthResponse(Response.Status.OK, MIME_HTML, html);
+    }
+
+    private String renderTgConnectedUsersHtml(String json) {
+        StringBuilder sb = new StringBuilder();
+        try {
+            org.json.JSONArray arr = new org.json.JSONArray(json);
+            if (arr.length() == 0) {
+                sb.append("<div style='background:#1a1d24;padding:10px;border-radius:8px;margin-top:10px;font-size:12px;color:#8c93a4'>")
+                  .append("ℹ️ <i>Пока никто не писал боту в Telegram. Напишите боту <code>/start</code> в Telegram, и ваш аккаунт появится здесь для добавления в 1 клик.</i></div>");
+                return sb.toString();
+            }
+
+            sb.append("<div style='margin-top:12px'>")
+              .append("<div style='font-size:12px;color:#a0a5b1;font-weight:bold'>👥 Пользователи, написавшие боту (нажмите чтобы добавить):</div>");
+
+            for (int i = 0; i < arr.length(); i++) {
+                org.json.JSONObject obj = arr.getJSONObject(i);
+                String id = obj.optString("id");
+                String name = obj.optString("name");
+                String user = obj.optString("username");
+                String userDisplay = user.isEmpty() ? name : (name + " (@" + user + ")");
+
+                sb.append("<div class='tg-user'>")
+                  .append("<div><b>").append(userDisplay).append("</b><div style='font-size:11px;color:#7a808c'>ID: ").append(id).append("</div></div>")
+                  .append("<button type='button' class='tg-user-btn' onclick=\"appendChatId('").append(id).append("')\">+ Добавить</button>")
+                  .append("</div>");
+            }
+            sb.append("</div>");
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return sb.toString();
     }
 }

@@ -32,6 +32,7 @@ public class UsageMonitorService extends Service {
     private UsageStatsManager usageStatsManager;
     private Handler handler;
     private LocalWebServer webServer;
+    private TelegramWorker telegramWorker;
     private static volatile String currentForegroundPackage = "";
     private static volatile boolean isScreenOn = true;
 
