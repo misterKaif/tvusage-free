@@ -139,6 +139,13 @@ public class LocalWebServer extends NanoHTTPD {
                     "<html><head><meta http-equiv='refresh' content='0;url=/'></head><body>Redirecting...</body></html>");
         }
 
+        // Handle Put TV to Sleep (/turn_off_tv)
+        if (uri.startsWith("/turn_off_tv")) {
+            com.tvusage.free.util.TvControlHelper.sleepTv(context);
+            return newFixedLengthResponse(Response.Status.REDIRECT, MIME_HTML,
+                    "<html><head><meta http-equiv='refresh' content='0;url=/'></head><body>Redirecting...</body></html>");
+        }
+
         // Handle Form Save
         if (Method.POST.equals(method) && "/save".equals(uri)) {
             Map<String, String> files = new HashMap<>();
@@ -221,6 +228,30 @@ public class LocalWebServer extends NanoHTTPD {
                     .append("</div>");
         }
 
+        // Generate Today's Chronological Timeline
+        StringBuilder timelineHtml = new StringBuilder();
+        List<UsageStatsHelper.ActivityInterval> timeline = UsageStatsHelper.getTodayTimeline(context);
+        if (timeline.isEmpty()) {
+            timelineHtml.append("<div style='color:#7a808c;font-size:14px;padding:8px 0'>За сегодня активности не зафиксировано (телевизор был выключен).</div>");
+        } else {
+            // Show reverse order (most recent first)
+            for (int i = timeline.size() - 1; i >= 0; i--) {
+                UsageStatsHelper.ActivityInterval interval = timeline.get(i);
+                String tag = interval.isRestricted ?
+                        "<span style='color:#ff5252;font-size:11px;font-weight:bold;margin-left:6px'>[Контроль]</span>" :
+                        "<span style='color:#81c784;font-size:11px;margin-left:6px'>[Свободно]</span>";
+
+                timelineHtml.append("<div style='display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid #222733'>")
+                        .append("<div>")
+                        .append("<div style='font-weight:bold;font-size:14px;color:#f0f2f5'>").append(interval.label).append(tag).append("</div>")
+                        .append("<div style='font-size:12px;color:#00e676;margin-top:2px'>⏰ ").append(interval.getFormattedRange()).append("</div>")
+                        .append("</div>")
+                        .append("<div style='font-size:13px;font-weight:bold;color:#ffd54f;background:#202530;padding:4px 8px;border-radius:6px'>")
+                        .append(interval.getDurationMinutes()).append(" мин</div>")
+                        .append("</div>");
+            }
+        }
+
         String tabDayClass = (period == UsageStatsHelper.Period.DAY) ? "active" : "";
         String tabWeekClass = (period == UsageStatsHelper.Period.WEEK) ? "active" : "";
         String tabMonthClass = (period == UsageStatsHelper.Period.MONTH) ? "active" : "";
@@ -273,9 +304,9 @@ public class LocalWebServer extends NanoHTTPD {
                 "<a href='/add_time?minutes=30' class='quick-btn'>+30 мин</a>" +
                 "<a href='/add_time?minutes=60' class='quick-btn'>+1 час</a>" +
                 "</div>" +
-                "<div style='margin-top:12px;display:flex;justify-content:space-between;align-items:center'>" +
-                "<a href='/reset_today' class='btn-reset'>🔄 Сбросить счетчик сегодня</a>" +
-                "</div>" +
+                "<div style='margin-top:12px;display:flex;gap:10px;flex-wrap:wrap'>" +
+                "<a href='/reset_today' class='btn-reset' onclick=\"return confirm('Вы действительно хотите сбросить счетчик экранного времени за сегодня?');\">🔄 Сбросить счетчик сегодня</a>" +
+                "<a href='/turn_off_tv' class='btn-reset' style='background:#1f2937;color:#93c5fd;border-color:#374151' onclick=\"return confirm('Выключить телевизор (перевести экран в спящий режим)?');\">🌙 Выключить ТВ (в сон)</a>" +
                 "</div>" +
                 "<div class='card'>" +
                 "<h2>📊 Системная статистика ТВ</h2>" +
@@ -284,6 +315,11 @@ public class LocalWebServer extends NanoHTTPD {
                 "<a href='/?period=week' class='" + tabWeekClass + "'>Неделя</a>" +
                 "<a href='/?period=month' class='" + tabMonthClass + "'>Месяц</a>" +
                 "</div>" +
+                "</div>" +
+                "<div class='card'>" +
+                "<h2>🕒 Хронология активности сегодня</h2>" +
+                "<div style='font-size:13px;color:#a0a5b1;margin-bottom:10px'>Периоды включения ТВ и запущенные программы:</div>" +
+                timelineHtml +
                 "</div>" +
                 "<form method='POST' action='/save'>" +
                 "<div class='card'>" +
@@ -299,10 +335,11 @@ public class LocalWebServer extends NanoHTTPD {
                 "<label>Сменить родительский пароль стрелок (пульта):</label>" +
                 "<input type='password' name='pin' placeholder='Оставьте пустым, чтобы не менять'>" +
                 "<small style='color:#7a808c'>Формат стрелок через запятую: UP,UP,DOWN,DOWN или LEFT,RIGHT,UP,DOWN</small>" +
-                "<label>Telegram Bot Token:</label>" +
+                "<label>Telegram Bot Token (необязательно):</label>" +
                 "<input type='text' name='tg_token' value='" + tgToken + "' placeholder='123456:ABC-DEF...'>" +
-                "<label>Telegram Admin Chat ID:</label>" +
-                "<input type='text' name='tg_chat_id' value='" + tgChatId + "' placeholder='987654321'>" +
+                "<label>Telegram Admin Chat ID (необязательно):</label>" +
+                "<input type='text' name='tg_chat_id' value='" + tgChatId + "' placeholder='Например: 12345678, 87654321'>" +
+                "<small style='color:#7a808c'>Необязательно. Если пусто — бот ответит первому написавшему родителю. Можно указать несколько ID через запятую для обоих родителей.</small>" +
                 "<button type='submit' class='btn'>Сохранить изменения</button>" +
                 "</div></form></body></html>";
 

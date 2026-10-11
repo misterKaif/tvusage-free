@@ -70,6 +70,48 @@ public class LockActivity extends AppCompatActivity {
         } else {
             btnAskTime.setVisibility(View.GONE);
         }
+
+        // Pause playing media and stop background processes of the blocked app
+        if (!isUnlockForSettings) {
+            stopPlayingMediaAndKillApp(getIntent().getStringExtra(EXTRA_BLOCKED_PACKAGE));
+        }
+    }
+
+    /**
+     * Pauses media playback (video/audio players like YouTube/SmartTube)
+     * and kills background processes of the restricted app.
+     */
+    private void stopPlayingMediaAndKillApp(String blockedPackage) {
+        try {
+            // 1. Request transient audio focus to force active video/music players to pause playback
+            android.media.AudioManager audioManager = (android.media.AudioManager) getSystemService(AUDIO_SERVICE);
+            if (audioManager != null) {
+                audioManager.requestAudioFocus(
+                        null,
+                        android.media.AudioManager.STREAM_MUSIC,
+                        android.media.AudioManager.AUDIOFOCUS_GAIN_TRANSIENT
+                );
+            }
+
+            // 2. Dispatch a global pause media key event to halt background media playback
+            long eventTime = android.os.SystemClock.uptimeMillis();
+            KeyEvent pauseDown = new KeyEvent(eventTime, eventTime, KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_MEDIA_PAUSE, 0);
+            KeyEvent pauseUp = new KeyEvent(eventTime, eventTime, KeyEvent.ACTION_UP, KeyEvent.KEYCODE_MEDIA_PAUSE, 0);
+            if (audioManager != null) {
+                audioManager.dispatchMediaKeyEvent(pauseDown);
+                audioManager.dispatchMediaKeyEvent(pauseUp);
+            }
+
+            // 3. Terminate background processes for the target blocked package
+            if (blockedPackage != null && !blockedPackage.isEmpty() && !blockedPackage.equals(getPackageName())) {
+                android.app.ActivityManager am = (android.app.ActivityManager) getSystemService(ACTIVITY_SERVICE);
+                if (am != null) {
+                    am.killBackgroundProcesses(blockedPackage);
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
     @Override
@@ -154,7 +196,17 @@ public class LockActivity extends AppCompatActivity {
             setResult(RESULT_CANCELED);
             finish();
         } else {
-            // Child canceled on lock screen: return to TV launcher home screen
+            // Child canceled on lock screen: ensure app is stopped and return to TV launcher home screen
+            String blockedPackage = getIntent().getStringExtra(EXTRA_BLOCKED_PACKAGE);
+            if (blockedPackage != null && !blockedPackage.isEmpty()) {
+                try {
+                    android.app.ActivityManager am = (android.app.ActivityManager) getSystemService(ACTIVITY_SERVICE);
+                    if (am != null) {
+                        am.killBackgroundProcesses(blockedPackage);
+                    }
+                } catch (Exception ignored) {}
+            }
+
             Intent home = new Intent(Intent.ACTION_MAIN);
             home.addCategory(Intent.CATEGORY_HOME);
             home.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);

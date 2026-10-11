@@ -115,11 +115,18 @@ public class MainActivity extends AppCompatActivity {
             updateUiState();
         });
 
-        // Button: Reset today's screen time
+        // Button: Reset today's screen time with confirmation dialog
         btnReset.setOnClickListener(v -> {
-            prefs.resetTodayUsage();
-            Toast.makeText(MainActivity.this, "🔄 Счетчик времени на сегодня обнулен!", Toast.LENGTH_SHORT).show();
-            updateUiState();
+            new androidx.appcompat.app.AlertDialog.Builder(MainActivity.this)
+                    .setTitle("Подтверждение")
+                    .setMessage("Сбросить счетчик экранного времени за сегодня?")
+                    .setPositiveButton("Да, сбросить", (dialog, which) -> {
+                        prefs.resetTodayUsage();
+                        Toast.makeText(MainActivity.this, "🔄 Счетчик времени на сегодня обнулен!", Toast.LENGTH_SHORT).show();
+                        updateUiState();
+                    })
+                    .setNegativeButton("Отмена", null)
+                    .show();
         });
 
         // Focus first action button for easy D-Pad remote control

@@ -32,9 +32,16 @@ public class UsageMonitorService extends Service {
     private UsageStatsManager usageStatsManager;
     private Handler handler;
     private LocalWebServer webServer;
-    private TelegramWorker telegramWorker;
-    private String currentForegroundPackage = "";
-    private boolean isScreenOn = true;
+    private static volatile String currentForegroundPackage = "";
+    private static volatile boolean isScreenOn = true;
+
+    public static boolean isTvScreenOn() {
+        return isScreenOn;
+    }
+
+    public static String getActivePackage() {
+        return currentForegroundPackage;
+    }
 
     private final BroadcastReceiver screenReceiver = new BroadcastReceiver() {
         @Override

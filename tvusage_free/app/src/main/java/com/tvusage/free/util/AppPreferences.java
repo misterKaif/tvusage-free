@@ -46,6 +46,9 @@ public class AppPreferences {
     private static final String KEY_TG_BOT_TOKEN = "tg_bot_token";
     private static final String KEY_TG_CHAT_ID = "tg_chat_id";
 
+    // Immediate manual lock requested by parent without messing up usage counters
+    private static final String KEY_FORCE_LOCKED = "force_locked";
+
     private final SharedPreferences prefs;
 
     public AppPreferences(Context context) {
@@ -111,12 +114,18 @@ public class AppPreferences {
 
     public synchronized int getTodayUsageSeconds() {
         checkAndResetDailyUsage();
-        return prefs.getInt(KEY_TODAY_USAGE_SECONDS, 0);
+        int used = prefs.getInt(KEY_TODAY_USAGE_SECONDS, 0);
+        // Sanitize: max seconds in a 24h day is 86400; if legacy code added 999999, auto-clean it
+        if (used > 86400) {
+            used = 0;
+            prefs.edit().putInt(KEY_TODAY_USAGE_SECONDS, 0).apply();
+        }
+        return used;
     }
 
     public synchronized void addUsageSeconds(int seconds) {
         checkAndResetDailyUsage();
-        int current = prefs.getInt(KEY_TODAY_USAGE_SECONDS, 0);
+        int current = getTodayUsageSeconds();
         prefs.edit().putInt(KEY_TODAY_USAGE_SECONDS, current + seconds).apply();
     }
 
@@ -124,21 +133,33 @@ public class AppPreferences {
         prefs.edit()
                 .putInt(KEY_TODAY_USAGE_SECONDS, 0)
                 .putInt(KEY_BONUS_MINUTES, 0)
+                .putBoolean(KEY_FORCE_LOCKED, false)
                 .apply();
     }
 
     public synchronized void addGrantMinutes(int minutes) {
         addBonusMinutes(minutes);
+        // Granting time lifts any immediate force-lock state
+        setForceLocked(false);
+    }
+
+    public boolean isForceLocked() {
+        return prefs.getBoolean(KEY_FORCE_LOCKED, false);
+    }
+
+    public void setForceLocked(boolean locked) {
+        prefs.edit().putBoolean(KEY_FORCE_LOCKED, locked).apply();
     }
 
     /**
      * Time is expired when:
      * - Parent mode is NOT active (isUnlockedUntilSleep is false)
-     * - Limit is > 0
-     * - Used seconds exceed allowed seconds
+     * - EITHER force locked by parent via Telegram
+     * - OR Limit is > 0 and used seconds exceed allowed seconds
      */
     public boolean isTimeExpired() {
         if (isUnlockedUntilSleep()) return false;
+        if (isForceLocked()) return true;
         int totalLimit = getTotalEffectiveLimitMinutes();
         if (totalLimit <= 0) return false;
         int usedSec = getTodayUsageSeconds();
@@ -146,6 +167,7 @@ public class AppPreferences {
     }
 
     public int getRemainingMinutes() {
+        if (isForceLocked()) return 0;
         int totalLimit = getTotalEffectiveLimitMinutes();
         if (totalLimit <= 0) return 999;
         int usedMin = getTodayUsageSeconds() / 60;
