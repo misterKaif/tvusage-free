@@ -5,5 +5,7 @@
     <string name="enter_dpad_pin">Введите пароль стрелками</string>
     <string name="dpad_help">Используйте ↑ ↓ ← → на пульте</string>
     <string name="ask_more_time">Попросить время</string>
+    <string name="ask_parents_telegram">Попросить время через Telegram</string>
+    <string name="btn_continue_format">▶ Продолжить (осталось: %d мин)</string>
     <string name="time_expired">Время просмотра на сегодня закончилось</string>
 </resources>

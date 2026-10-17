@@ -138,9 +138,31 @@ public class AppPreferences {
     }
 
     public synchronized void addGrantMinutes(int minutes) {
-        addBonusMinutes(minutes);
+        if (minutes >= 0) {
+            addBonusMinutes(minutes);
+        } else {
+            deductMinutes(-minutes);
+        }
         // Granting time lifts any immediate force-lock state
         setForceLocked(false);
+    }
+
+    /**
+     * Deducts minutes from remaining time today.
+     * Decreases bonus minutes first, and if still needed, increases used seconds so remaining time shrinks.
+     */
+    public synchronized void deductMinutes(int minutes) {
+        checkAndResetDailyUsage();
+        if (minutes <= 0) return;
+        int curBonus = getBonusMinutes();
+        if (curBonus >= minutes) {
+            prefs.edit().putInt(KEY_BONUS_MINUTES, curBonus - minutes).apply();
+        } else {
+            int remainingToDeduct = minutes - curBonus;
+            prefs.edit().putInt(KEY_BONUS_MINUTES, 0).apply();
+            // Add to today's usage so that remaining minutes shrink
+            addUsageSeconds(remainingToDeduct * 60);
+        }
     }
 
     public boolean isForceLocked() {

@@ -114,6 +114,11 @@ public class TelegramWorker {
                         prefs.addGrantMinutes(minutes);
                         broadcastTimeChanged("Родители добавили +" + minutes + " мин!");
                         sendMessageWithMenu(senderId, "✅ Выдано +" + minutes + " мин просмотра!\nОсталось: " + prefs.getRemainingMinutes() + " мин.");
+                    } else if (data.startsWith("take_")) {
+                        int minutes = Integer.parseInt(data.replace("take_", ""));
+                        prefs.deductMinutes(minutes);
+                        broadcastTimeChanged("Родители уменьшили время на " + minutes + " мин.");
+                        sendMessageWithMenu(senderId, "🔻 Убавлено -" + minutes + " мин просмотра.\nОсталось: " + prefs.getRemainingMinutes() + " мин.");
                     } else if ("reject".equals(data)) {
                         sendMessageWithMenu(senderId, "❌ Запрос на добавление времени отклонен.");
                     }
@@ -143,8 +148,11 @@ public class TelegramWorker {
 
             if (text.startsWith("/start") || text.startsWith("/help") || text.equalsIgnoreCase("меню") || text.equals("/menu")) {
                 sendMessageWithMenu(chatId, "📺 *TVUsage Free Bot*\nУправление родительским контролем на телевизоре.\n\n" +
-                        "• `/set <мин>` — установить точный остаток времени на сегодня\n" +
+                        "• `<число>` (например `30`) — установить остаток минут на сегодня\n" +
+                        "• `+<число>` / `-<число>` (например `+20` или `-15`) — быстро добавить или забрать минуты\n" +
+                        "• `/set <мин>` — установить точный остаток времени\n" +
                         "• `/grant <мин>` — добавить минуты\n" +
+                        "• `/take <мин>` — убавить (забрать) минуты\n" +
                         "• `/unlock` — режим родителя до сна ТВ\n" +
                         "• `/lock` — заблокировать сейчас\n" +
                         "• `/off` — выключить ТВ (в сон)\n\n" +
@@ -157,7 +165,7 @@ public class TelegramWorker {
                 String[] parts = text.split(" ");
                 if (parts.length > 1) {
                     try {
-                        int targetMins = Integer.parseInt(parts[1]);
+                        int targetMins = Integer.parseInt(parts[1].trim());
                         prefs.setRemainingMinutesToday(targetMins);
                         broadcastTimeChanged("Остаток времени обновлен: " + targetMins + " мин.");
                         sendMessageWithMenu(chatId, "⏱️ Остаток времени на сегодня установлен: *" + targetMins + " мин* (из " + prefs.getTotalEffectiveLimitMinutes() + " мин).");
@@ -169,10 +177,35 @@ public class TelegramWorker {
                 }
             } else if (text.startsWith("/grant")) {
                 String[] parts = text.split(" ");
-                int mins = parts.length > 1 ? Integer.parseInt(parts[1]) : 30;
+                int mins = parts.length > 1 ? Integer.parseInt(parts[1].trim()) : 30;
                 prefs.addGrantMinutes(mins);
                 broadcastTimeChanged("Родители добавили +" + mins + " мин!");
                 sendMessageWithMenu(chatId, "✅ Добавлено +" + mins + " мин просмотра!\nОсталось: " + prefs.getRemainingMinutes() + " мин.");
+            } else if (text.startsWith("/take")) {
+                String[] parts = text.split(" ");
+                int mins = parts.length > 1 ? Integer.parseInt(parts[1].trim()) : 15;
+                prefs.deductMinutes(mins);
+                broadcastTimeChanged("Родители уменьшили время на " + mins + " мин.");
+                sendMessageWithMenu(chatId, "🔻 Убавлено -" + mins + " мин просмотра.\nОсталось: " + prefs.getRemainingMinutes() + " мин.");
+            } else if (text.matches("^[+-]\\d+$")) {
+                // Quick shortcut: +15, -20
+                int delta = Integer.parseInt(text);
+                if (delta >= 0) {
+                    prefs.addGrantMinutes(delta);
+                    broadcastTimeChanged("Родители добавили +" + delta + " мин!");
+                    sendMessageWithMenu(chatId, "✅ Добавлено +" + delta + " мин просмотра!\nОсталось: " + prefs.getRemainingMinutes() + " мин.");
+                } else {
+                    int deduct = -delta;
+                    prefs.deductMinutes(deduct);
+                    broadcastTimeChanged("Родители уменьшили время на " + deduct + " мин.");
+                    sendMessageWithMenu(chatId, "🔻 Убавлено -" + deduct + " мин просмотра.\nОсталось: " + prefs.getRemainingMinutes() + " мин.");
+                }
+            } else if (text.matches("^\\d+$")) {
+                // Quick shortcut: plain digits like "25" or "40" sets remaining minutes
+                int targetMins = Integer.parseInt(text);
+                prefs.setRemainingMinutesToday(targetMins);
+                broadcastTimeChanged("Остаток времени обновлен: " + targetMins + " мин.");
+                sendMessageWithMenu(chatId, "⏱️ Остаток времени на сегодня установлен: *" + targetMins + " мин* (из " + prefs.getTotalEffectiveLimitMinutes() + " мин).");
             } else if (text.equals("👑 Взрослый режим") || text.startsWith("/unlock")) {
                 prefs.setUnlockedUntilSleep(true);
                 prefs.setForceLocked(false);
@@ -193,10 +226,10 @@ public class TelegramWorker {
                 prefs.resetTodayUsage();
                 broadcastTimeChanged("Счетчик за сегодня сброшен на 0");
                 sendMessageWithMenu(chatId, "🔄 *Счетчик за сегодня успешно сброшен на 0!*\nОсталось времени: " + prefs.getRemainingMinutes() + " мин.");
-            } else if (text.equals("➕ Добавить время") || text.contains("Добавить время")) {
+            } else if (text.equals("⏱️ Изменить время") || text.equals("➕ Добавить время") || text.contains("Добавить время") || text.contains("Изменить время")) {
                 sendAddTimeInlineButtons(chatId);
             } else {
-                sendMessageWithMenu(chatId, "Неизвестная команда. Выберите действие из меню ниже:");
+                sendMessageWithMenu(chatId, "Неизвестная команда. Отправьте число минут (например `30` или `+15`), либо выберите действие из меню:");
             }
         }
     }
@@ -311,15 +344,22 @@ public class TelegramWorker {
         String token = prefs.getTgBotToken();
         if (token.isEmpty()) return;
 
-        String keyboardJson = "{\"inline_keyboard\":[[" +
-                "{\"text\":\"+15 мин\",\"callback_data\":\"grant_15\"}," +
-                "{\"text\":\"+30 мин\",\"callback_data\":\"grant_30\"}," +
-                "{\"text\":\"+1 час\",\"callback_data\":\"grant_60\"}" +
-                "]]}";
+        String keyboardJson = "{\"inline_keyboard\":[" +
+                "[{\"text\":\"➕ +15 мин\",\"callback_data\":\"grant_15\"}," +
+                "{\"text\":\"➕ +30 мин\",\"callback_data\":\"grant_30\"}," +
+                "{\"text\":\"➕ +1 час\",\"callback_data\":\"grant_60\"}]," +
+                "[{\"text\":\"➖ -15 мин\",\"callback_data\":\"take_15\"}," +
+                "{\"text\":\"➖ -30 мин\",\"callback_data\":\"take_30\"}]," +
+                "[{\"text\":\"🔄 Сбросить счетчик сегодня\",\"callback_data\":\"grant_0\"}]" +
+                "]}";
 
         RequestBody body = new FormBody.Builder()
                 .add("chat_id", chatId)
-                .add("text", "⏱️ Выберите, сколько времени добавить:")
+                .add("text", "⏱️ *Управление временем просмотра:*\n\n" +
+                        "• Выберите быструю кнопку ниже\n" +
+                        "• Либо отправьте *число* сообщением (например, `20` установит остаток 20 мин, `+10` добавит 10 мин, `-15` отнимет 15 мин)\n" +
+                        "• Текущий остаток: *" + prefs.getRemainingMinutes() + " мин*")
+                .add("parse_mode", "Markdown")
                 .add("reply_markup", keyboardJson)
                 .build();
 
@@ -359,7 +399,7 @@ public class TelegramWorker {
 
             RequestBody body = new FormBody.Builder()
                     .add("chat_id", cleanId)
-                    .add("text", "🚨 Ребенок просит дополнительное время на телевизоре!")
+                    .add("text", "🚨 Ребенок просит дополнительное время на телевизоре!\nТекущий остаток: " + prefs.getRemainingMinutes() + " мин.")
                     .add("reply_markup", keyboardJson)
                     .build();
 
@@ -388,7 +428,7 @@ public class TelegramWorker {
                 "[{\"text\":\"📊 Статус и статистика\"},{\"text\":\"🕒 История за сегодня\"}]," +
                 "[{\"text\":\"👑 Взрослый режим\"},{\"text\":\"🛡️ Детский режим\"}]," +
                 "[{\"text\":\"🔒 Блокировать сейчас\"},{\"text\":\"🌙 Выключить ТВ (в сон)\"}]," +
-                "[{\"text\":\"➕ Добавить время\"},{\"text\":\"🔄 Сбросить счетчик сегодня\"}]" +
+                "[{\"text\":\"⏱️ Изменить время\"},{\"text\":\"🔄 Сбросить счетчик сегодня\"}]" +
                 "],\"resize_keyboard\":true,\"is_persistent\":true}";
 
         RequestBody body = new FormBody.Builder()

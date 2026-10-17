@@ -39,6 +39,7 @@ public class LockActivity extends AppCompatActivity {
     private final List<String> enteredSequence = new ArrayList<>();
     private View[] dots;
     private Button btnAskTime;
+    private Button btnContinue;
     private boolean isUnlockForSettings = false;
     public static final String ACTION_TIME_CHANGED = "com.tvusage.free.ACTION_TIME_CHANGED";
     public static final String EXTRA_GRANTED_MESSAGE = "extra_granted_message";
@@ -49,10 +50,15 @@ public class LockActivity extends AppCompatActivity {
             if (ACTION_TIME_CHANGED.equals(intent.getAction())) {
                 String msg = intent.getStringExtra(EXTRA_GRANTED_MESSAGE);
                 if (msg == null || msg.isEmpty()) {
-                    msg = "Время добавлено родителями! Приятного просмотра!";
+                    msg = "Время обновлено родителями!";
                 }
                 Toast.makeText(LockActivity.this, msg, Toast.LENGTH_LONG).show();
-                finish();
+                if (!prefs.isTimeExpired() && !isUnlockForSettings) {
+                    // Time was added, auto close or update Continue button
+                    finish();
+                } else {
+                    updateButtonsState();
+                }
             }
         }
     };
@@ -77,22 +83,55 @@ public class LockActivity extends AppCompatActivity {
                 findViewById(R.id.dot6)
         };
 
+        btnContinue = findViewById(R.id.btnContinue);
         btnAskTime = findViewById(R.id.btnAskTime);
-        if (prefs.isTelegramConfigured() && !isUnlockForSettings) {
-            btnAskTime.setVisibility(View.VISIBLE);
-            btnAskTime.setOnClickListener(v -> {
-                TelegramWorker.sendAskTimeRequest(LockActivity.this);
-                Toast.makeText(LockActivity.this, "Запрос отправлен родителям в Telegram!", Toast.LENGTH_LONG).show();
-                btnAskTime.setEnabled(false);
-                btnAskTime.setText("Запрос отправлен...");
-            });
-        } else {
-            btnAskTime.setVisibility(View.GONE);
-        }
+
+        btnContinue.setOnClickListener(v -> {
+            // Dismiss lock screen and let child continue using TV
+            finish();
+        });
+
+        btnAskTime.setOnClickListener(v -> {
+            TelegramWorker.sendAskTimeRequest(LockActivity.this);
+            Toast.makeText(LockActivity.this, "Запрос отправлен родителям в Telegram!", Toast.LENGTH_LONG).show();
+            btnAskTime.setEnabled(false);
+            btnAskTime.setText("Запрос отправлен...");
+        });
+
+        updateButtonsState();
 
         // Pause playing media and stop background processes of the blocked app
         if (!isUnlockForSettings) {
             stopPlayingMediaAndKillApp(getIntent().getStringExtra(EXTRA_BLOCKED_PACKAGE));
+        }
+    }
+
+    private void updateButtonsState() {
+        if (isUnlockForSettings) {
+            if (btnContinue != null) btnContinue.setVisibility(View.GONE);
+            if (btnAskTime != null) btnAskTime.setVisibility(View.GONE);
+            return;
+        }
+
+        int remainingMins = prefs.getRemainingMinutes();
+        boolean hasTime = !prefs.isTimeExpired() && remainingMins > 0;
+
+        if (btnContinue != null) {
+            if (hasTime) {
+                btnContinue.setVisibility(View.VISIBLE);
+                btnContinue.setText(getString(R.string.btn_continue_format, remainingMins));
+                btnContinue.requestFocus();
+            } else {
+                btnContinue.setVisibility(View.GONE);
+            }
+        }
+
+        if (btnAskTime != null) {
+            if (prefs.isTelegramConfigured()) {
+                btnAskTime.setVisibility(View.VISIBLE);
+            } else {
+                btnAskTime.setVisibility(View.GONE);
+            }
         }
     }
 
